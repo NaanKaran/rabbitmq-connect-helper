@@ -41,7 +41,7 @@ describe("QueueManager", () => {
 
     // Wait for the message to be consumed
     const consumedMessage = await new Promise<string>((resolve) => {
-      consumer.consume(queueName, (msg) => {
+      consumer.consume(queueName, async (msg, ack, nack) => {
         resolve(msg);
       });
     });

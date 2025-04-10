@@ -8,7 +8,7 @@ export class RabbitMQConsumer {
 
   async consume(
     queueName: string,
-    onMessage: (message: string) => void
+    onMessage: (msg: any, ack: () => void, nack: () => void) => Promise<void>
   ): Promise<void> {
     const channel = await this.queueManager.getOrCreateQueue(queueName);
 
@@ -17,18 +17,21 @@ export class RabbitMQConsumer {
 
     channel.consume(
       queueName,
-      (msg) => {
+      async (msg) => {
         if (msg) {
           try {
-            onMessage(msg.content.toString());
-            channel.ack(msg);
+            await onMessage(
+              msg,
+              () => channel.ack(msg), // Acknowledgement function
+              () => channel.nack(msg, false, false) // Negative Acknowledgement function
+            );
           } catch (error) {
             console.error(`Error processing message from ${queueName}:`, error);
-            channel.nack(msg, false, false);
+            channel.nack(msg, false, false); // Reject message
           }
         }
       },
-      { noAck: false }
+      { noAck: false } // Ensuring manual acknowledgment
     );
 
     console.log(

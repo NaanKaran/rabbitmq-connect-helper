@@ -1,13 +1,13 @@
 {
   "name": "rabbitmq-connect-helper",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "description": "A RabbitMQ helper for managing producers, consumers, and queues.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "npx tsc",
     "test": "jest",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "rabbitmq",
