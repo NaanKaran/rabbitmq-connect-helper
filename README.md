@@ -30,14 +30,62 @@ Import the classes in your application:
 import { QueueManager, RabbitMQProducer, RabbitMQConsumer } from "rabbitmq-connect-helper";
 ```
 
-Configure the QueueManager with your RabbitMQ connection URL:
 
+### 🧩 Getting Started
+### 🔌 Initialize QueueManager
 ```typescript
-const rabbitMqUrl = "amqp://<username>:<password>@<host>";
-const queueManager = new QueueManager(rabbitMqUrl);
+ import { QueueManager } from 'rabbitmq-connect-helper'; const queueManager = new QueueManager({
+     connectionUrl: 'amqp:/user:password@localhost:5672', reconnectDelayMs: 5000, // Optional: Reconnect delay on failure 
+ });
 ```
 
-### Producer Example
+
+### ✅ Consumer Example
+    Consume messages from a queue with built-in support for:
+
+✅ Automatic message acknowledgment
+
+🔁 Retry mechanism with delay
+
+☠️ Dead Letter Queue (DLQ) support
+
+⚙️ Custom prefetch count for performance tuning
+
+```typescript
+import { RabbitMQConsumer } from 'rabbitmq-connect-helper';
+import { ConsumeMessage } from 'amqplib';
+
+// Initialize RabbitMQConsumer with QueueManager
+const consumer = new RabbitMQConsumer(queueManager);
+
+const queueName = 'exampleQueue';
+
+await consumer.consume(
+  queueName,
+  async (msg: ConsumeMessage, ack: () => void, retry: () => void) => {
+    try {
+      const payload = msg.content.toString();
+      const data = JSON.parse(payload);
+
+      console.log(`✅ Received message:`, data);
+
+      // Your business logic goes here
+      ack(); // Confirm successful processing
+    } catch (error) {
+      console.error(`❌ Error processing message from ${queueName}:`, error);
+      await retry(); // Retry message with backoff, eventually to DLQ
+    }
+  },
+  {
+    prefetch: 10,                 // Optional: Controls concurrency
+    retryAttempts: 3,             // Optional: Max retries before DLQ
+    retryDelayMs: 5000,           // Optional: Wait time before retrying
+    deadLetterQueueSuffix: '.DLQ' // Optional: DLQ naming pattern
+  }
+);
+```
+
+### ✅ Producer Example
 
 Send messages to a queue:
 
@@ -53,21 +101,6 @@ const producer = new RabbitMQProducer(queueManager);
 
 ```
 
-### Consumer Example
-
-Consume messages from a queue:
-
-```typescript
-const consumer = new RabbitMQConsumer(queueManager);
-
-
-    const queueName = "exampleQueue";
-
-    await consumer.consume(queueName, (msg) => {
-        console.log(`Received message: ${msg}`);
-    });
-
-```
 
 ## **API Reference**
 
