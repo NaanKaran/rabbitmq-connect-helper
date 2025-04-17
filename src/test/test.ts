@@ -7,7 +7,7 @@ const username = "admin";
 const password = encodeURIComponent("StrongPassword123");
 const host = "localhost"; // Or your RabbitMQ server address
 
-const rabbitMqUrl = `amqp://${username}:${password}@${host}`;
+const rabbitMqUrl = `amqp://${username}:${password}@${host}`; // Replace with your RabbitMQ URL
 jest.setTimeout(20000);
 describe("QueueManager", () => {
   let queueManager: QueueManager;
@@ -41,9 +41,38 @@ describe("QueueManager", () => {
 
     // Wait for the message to be consumed
     const consumedMessage = await new Promise<string>((resolve) => {
-      consumer.consume(queueName, async (msg, ack, nack) => {
-        resolve(msg);
-      });
+      consumer.consume(
+        queueName,
+        async (msg, ack, retry) => {
+          throw new Error("Simulated failure");
+
+          ack();
+        },
+        {
+          prefetch: 5,
+          retryAttempts: 3,
+          retryDelayMs: 3000,
+        }
+      );
+
+      // consumer
+      //   .consume(queueName, async (msg, ack, nack) => {
+      //     try {
+      //       if (msg) {
+      //         const messageContent = msg.content.toString();
+      //         ack(); // Acknowledge the message
+      //         resolve(messageContent); // Resolve the promise with the message content
+      //       } else {
+      //         nack(); // Negative acknowledgment if no message
+      //       }
+      //     } catch (error) {
+      //       nack(); // Ensure nack is called on error
+      //       console.error("Error consuming message:", error);
+      //     }
+      //   })
+      //   .catch((error) => {
+      //     console.error("Error setting up consumer:", error);
+      //   });
     });
 
     console.log(consumedMessage); // Log the consumed message
