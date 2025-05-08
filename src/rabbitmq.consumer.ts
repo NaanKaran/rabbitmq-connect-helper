@@ -16,10 +16,10 @@ interface QueueMetrics {
 }
 
 export class RabbitMQConsumer {
-  private activeConsumers = new Map<string, () => Promise<void>>();
-  private pausedQueues = new Set<string>();
-  private metrics: Record<string, QueueMetrics> = {};
-  private messageAttempts = new WeakMap<ConsumeMessage, number>();
+  private readonly activeConsumers = new Map<string, () => Promise<void>>();
+  private readonly pausedQueues = new Set<string>();
+  private readonly metrics: Record<string, QueueMetrics> = {};
+  private readonly messageAttempts = new WeakMap<ConsumeMessage, number>();
 
   constructor(private readonly queueManager: QueueManager) {}
 
@@ -36,14 +36,14 @@ export class RabbitMQConsumer {
       prefetch = 1,
       consumerOptions = {},
       retryAttempts = 3,
-      retryDelayMs = 5000,
+      retryDelayMs = 180000,
       deadLetterQueueSuffix = ".DLQ",
     } = options;
 
     const setupConsumer = async () => {
       try {
         const channel = await this.queueManager.getOrCreateQueue(queueName);
-        await channel.prefetch(prefetch);
+        channel.prefetch(prefetch);
 
         this.metrics[queueName] ||= { ack: 0, nack: 0, errors: 0 };
 
@@ -126,7 +126,7 @@ export class RabbitMQConsumer {
       };
 
       const retry = async () => {
-        const attempt = (this.messageAttempts.get(msg) || 0) + 1;
+        const attempt = (this.messageAttempts.get(msg) ?? 0) + 1;
         this.messageAttempts.set(msg, attempt);
 
         if (attempt <= retryAttempts) {
@@ -168,7 +168,7 @@ export class RabbitMQConsumer {
     try {
       const dlqName = `${queueName}${suffix}`;
       const dlqChannel = await this.queueManager.getOrCreateQueue(dlqName);
-      await dlqChannel.sendToQueue(dlqName, msg.content, {
+      dlqChannel.sendToQueue(dlqName, msg.content, {
         headers: msg.properties.headers,
         persistent: true,
       });

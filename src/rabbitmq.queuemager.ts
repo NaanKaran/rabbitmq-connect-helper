@@ -1,23 +1,34 @@
-import amqplib, { Connection, Channel } from "amqplib";
+import amqplib, { Channel, Options, ChannelModel } from "amqplib";
 
 export class QueueManager {
-  private connections: Map<
+  private readonly connections: Map<
     string,
-    { connection: Connection; channel: Channel }
+    { model: ChannelModel; channel: Channel }
   > = new Map();
-  private reconnecting: Set<string> = new Set();
-  private reconnectDelay = 10000; // 10 seconds
-
-  constructor(private url: string) {
+  private readonly reconnecting: Set<string> = new Set();
+  private readonly reconnectDelay: number;
+  constructor(
+    private readonly url: string,
+    private readonly options?: Options.Connect,
+    reconnectDelayMs: number = 30000
+  ) {
     if (!url) throw new Error("RabbitMQ URL is required.");
+    this.reconnectDelay = reconnectDelayMs;
     this.setupGracefulShutdown();
   }
 
   private async createConnection(
     queueName: string
-  ): Promise<{ connection: Connection; channel: Channel }> {
-    const connection = await amqplib.connect(this.url);
-    const channel = await connection.createChannel();
+  ): Promise<{ model: ChannelModel; channel: Channel }> {
+    const model = await amqplib.connect(this.url, {
+      heartbeat: this.options?.heartbeat ?? 30,
+      protocol: this.options?.protocol ?? "amqps",
+      port: this.options?.port ?? 5671,
+      ...this.options,
+    });
+
+    const connection = model.connection;
+    const channel = await model.createChannel();
 
     await channel.assertQueue(queueName, { durable: true });
 
@@ -41,7 +52,7 @@ export class QueueManager {
       console.warn(`⚠️ Channel error for queue: ${queueName}`, err);
     });
 
-    return { connection, channel };
+    return { model, channel };
   }
 
   private handleReconnect(queueName: string): void {
@@ -53,8 +64,8 @@ export class QueueManager {
     setTimeout(async () => {
       try {
         console.log(`🔄 Reconnecting to queue: ${queueName}...`);
-        const { connection, channel } = await this.createConnection(queueName);
-        this.connections.set(queueName, { connection, channel });
+        const { model, channel } = await this.createConnection(queueName);
+        this.connections.set(queueName, { model, channel });
         console.log(`✅ Reconnected to queue: ${queueName}`);
       } catch (err) {
         console.error(`❌ Failed to reconnect to queue: ${queueName}`, err);
@@ -68,19 +79,19 @@ export class QueueManager {
     const existing = this.connections.get(queueName);
 
     if (existing) {
-      // Validate the channel is still open
       try {
         await existing.channel.checkQueue(queueName);
         return existing.channel;
       } catch (err) {
-        console.warn(`⚠️ Channel stale for ${queueName}, reconnecting...`);
+        console.warn(`⚠️ Channel stale for ${queueName}, reconnecting...`, err);
         this.handleReconnect(queueName);
         await this.delay(this.reconnectDelay);
+        throw err;
       }
     }
 
-    const { connection, channel } = await this.createConnection(queueName);
-    this.connections.set(queueName, { connection, channel });
+    const { model, channel } = await this.createConnection(queueName);
+    this.connections.set(queueName, { model, channel });
     return channel;
   }
 
@@ -89,7 +100,7 @@ export class QueueManager {
     if (entry) {
       try {
         await entry.channel.close();
-        await entry.connection.close();
+        await entry.model.close();
       } catch (err) {
         console.error(`❌ Error closing queue: ${queueName}`, err);
       } finally {
@@ -99,10 +110,10 @@ export class QueueManager {
   }
 
   async closeAll(): Promise<void> {
-    for (const [queueName, { connection, channel }] of this.connections) {
+    for (const [queueName, { model, channel }] of this.connections) {
       try {
         await channel.close();
-        await connection.close();
+        await model.close();
       } catch (err) {
         console.error(`❌ Error closing queue: ${queueName}`, err);
       }

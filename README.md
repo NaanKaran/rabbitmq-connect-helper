@@ -85,22 +85,44 @@ await consumer.consume(
 );
 ```
 
-### ✅ Producer Example
+### 📤 Producer Example
 
-Send messages to a queue:
+Publish messages to a queue using the built-in RabbitMQProducer:
 
 ```typescript
+import { QueueManager, RabbitMQProducer } from 'rabbitmq-connect-helper';
+
+// Step 1: Initialize QueueManager
+const queueManager = new QueueManager({
+  connectionUrl: 'amqp://user:password@localhost:5672',
+});
+
+// Step 2: Create RabbitMQProducer instance
 const producer = new RabbitMQProducer(queueManager);
 
+// Step 3: Publish a message
+const queueName = 'exampleQueue';
+const payload = {
+  id: '12345',
+  action: 'create',
+  data: {
+    name: 'Test',
+    value: 42
+  }
+};
 
-    const queueName = "exampleQueue";
-    const message = { content: "Hello, RabbitMQ!" };
-    
-    await producer.send(queueName, message);
-    console.log("Message sent!");
+await producer.publish(queueName, payload);
+
+console.log(`✅ Message published to ${queueName}`);
 
 ```
 
+✨ Features
+JSON serialization built-in
+
+Queue auto-declared (if not already present)
+
+Retry logic (if supported by your queue manager configuration)
 
 ## **API Reference**
 
