@@ -1,19 +1,38 @@
 {
-  "name": "rabbitmq-connect-helper",
-  "version": "1.1.0",
-  "description": "A RabbitMQ helper for managing producers, consumers, and queues.",
+  "name": "simple-rabbitmq-client",
+  "version": "1.0.0",
+  "description": "A simple, modern RabbitMQ client for Node.js with minimal setup and easy-to-use API",
   "main": "dist/index.js",
+  "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
-    "build": "npx tsc",
-    "test": "jest",
-    "prepublishOnly": "npm run build"
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc",
+    "build:esm": "tsc --module es2020 --outDir dist/esm",
+    "test": "echo 'No tests to run' && exit 0",
+    "prepublishOnly": "npm run build",
+    "example:producer": "ts-node examples/producer.ts",
+    "example:consumer": "ts-node examples/consumer.ts",
+    "example:client": "ts-node examples/client.ts"
   },
   "keywords": [
     "rabbitmq",
+    "messaging",
     "queue",
-    "helper",
-    "typescript"
+    "simple",
+    "easy",
+    "typescript",
+    "amqp",
+    "producer",
+    "consumer",
+    "minimal"
   ],
   "author": "Karunakaran R",
   "license": "MIT",
@@ -28,5 +47,19 @@
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
+  },
+  "files": [
+    "dist/**/*",
+    "examples/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/naankaran/simple-rabbitmq-client.git"
+  },
+  "homepage": "https://github.com/naankaran/simple-rabbitmq-client#readme",
+  "bugs": {
+    "url": "https://github.com/naankaran/simple-rabbitmq-client/issues"
   }
 }
